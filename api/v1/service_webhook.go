@@ -17,6 +17,10 @@ limitations under the License.
 package v1
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -41,8 +45,13 @@ var _ webhook.Defaulter = &Service{}
 // Default implements webhook.Defaulter so a webhook will be registered for the type
 func (r *Service) Default() {
 	servicelog.Info("default", "name", r.Name)
-
-	// TODO(user): fill in your defaulting logic.
+	specBytes, err := json.Marshal(r.Spec)
+	if err != nil {
+		return
+	}
+	servicelog.Info("default", "spec", string(specBytes))
+	sumBytes := sha256.Sum256(specBytes)
+	r.Name = hex.EncodeToString(sumBytes[:])
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
