@@ -3,5 +3,21 @@ kind: Service
 metadata:
   name: service-sample
 spec:
-  # Add fields here
-  foo: bar
+  containers:
+  - name: busybox
+    image: busybox
+    command: ["sleep", "3600"]
+    env:
+    - name: CODIUS_PUBLIC_URI
+      value: https://c8s.example.com
+    - name: CODIUS_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: mysecret
+          key: password
+    - name: CODIUS_SECRET2
+      valueFrom:
+        secretKeyRef:
+          name: mysecret2
+          key: password
+  port: 80

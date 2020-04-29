@@ -1,0 +1,183 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.5
+  creationTimestamp: null
+  name: services.core.codius.org
+spec:
+  group: core.codius.org
+  names:
+    kind: Service
+    listKind: ServiceList
+    plural: services
+    singular: service
+  scope: Namespaced
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: Service is the Schema for the services API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ServiceSpec defines the desired state of Service
+            properties:
+              containers:
+                description: List of containers belonging to the pod. Containers cannot
+                  currently be added or removed. There must be at least one container
+                  in a Pod. Cannot be updated.
+                items:
+                  properties:
+                    args:
+                      description: 'Arguments to the entrypoint. The docker image''s
+                        CMD is used if this is not provided. Variable references $(VAR_NAME)
+                        are expanded using the container''s environment. If a variable
+                        cannot be resolved, the reference in the input string will
+                        be unchanged. The $(VAR_NAME) syntax can be escaped with a
+                        double $$, ie: $$(VAR_NAME). Escaped references will never
+                        be expanded, regardless of whether the variable exists or
+                        not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
+                      items:
+                        type: string
+                      type: array
+                    command:
+                      description: 'Entrypoint array. Not executed within a shell.
+                        The docker image''s ENTRYPOINT is used if this is not provided.
+                        Variable references $(VAR_NAME) are expanded using the container''s
+                        environment. If a variable cannot be resolved, the reference
+                        in the input string will be unchanged. The $(VAR_NAME) syntax
+                        can be escaped with a double $$, ie: $$(VAR_NAME). Escaped
+                        references will never be expanded, regardless of whether the
+                        variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell'
+                      items:
+                        type: string
+                      type: array
+                    env:
+                      description: List of environment variables to set in the container.
+                        Cannot be updated.
+                      items:
+                        properties:
+                          name:
+                            description: Name of the environment variable. Must be
+                              a C_IDENTIFIER.
+                            type: string
+                          value:
+                            description: 'Variable references $(VAR_NAME) are expanded
+                              using the previous defined environment variables in
+                              the container and any service environment variables.
+                              If a variable cannot be resolved, the reference in the
+                              input string will be unchanged. The $(VAR_NAME) syntax
+                              can be escaped with a double $$, ie: $$(VAR_NAME). Escaped
+                              references will never be expanded, regardless of whether
+                              the variable exists or not. Defaults to "".'
+                            type: string
+                          valueFrom:
+                            description: Source for the environment variable's value.
+                              Cannot be used if value is not empty.
+                            properties:
+                              secretKeyRef:
+                                description: Selects a key of a secret in the pod's
+                                  namespace
+                                properties:
+                                  key:
+                                    description: The key of the secret to select from.  Must
+                                      be a valid secret key.
+                                    type: string
+                                  name:
+                                    description: 'Name of the referent. More info:
+                                      https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                      TODO: Add other useful fields. apiVersion, kind,
+                                      uid?'
+                                    type: string
+                                required:
+                                - key
+                                type: object
+                            required:
+                            - secretKeyRef
+                            type: object
+                        required:
+                        - name
+                        type: object
+                      type: array
+                    image:
+                      description: 'Docker image name. More info: https://kubernetes.io/docs/concepts/containers/images'
+                      type: string
+                    name:
+                      description: Name of the container specified as a DNS_LABEL.
+                        Each container in a pod must have a unique name (DNS_LABEL).
+                        Cannot be updated.
+                      type: string
+                    workingDir:
+                      description: Container's working directory. If not specified,
+                        the container runtime's default will be used, which might
+                        be configured in the container image. Cannot be updated.
+                      type: string
+                  required:
+                  - image
+                  - name
+                  type: object
+                type: array
+              envFrom:
+                description: List of sources to populate environment variables in
+                  the containers. Cannot be updated.
+                items:
+                  properties:
+                    secretRef:
+                      description: The Secret to select from
+                      properties:
+                        algorithm:
+                          default: sha256
+                          description: Algorithm for encoding of the secret's hash
+                            for public inclusion in the spec Defaults to sha256
+                          enum:
+                          - sha256
+                          type: string
+                        hash:
+                          description: Hex-encoded hash of secret's values using the
+                            specified algorithm
+                          type: string
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            TODO: Add other useful fields. apiVersion, kind, uid?'
+                          type: string
+                      required:
+                      - hash
+                      type: object
+                  required:
+                  - secretRef
+                  type: object
+                type: array
+              port:
+                default: 80
+                description: Port listening for http requests. Defaults to 80
+                format: int32
+                type: integer
+            required:
+            - containers
+            type: object
+          status:
+            description: ServiceStatus defines the observed state of Service
+            type: object
+        type: object
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
