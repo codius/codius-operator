@@ -97,6 +97,7 @@ type Container struct {
 
 type SecretEnvSource struct {
 	// The Secret to select from.
+	// Secrets must include a "codius.service" annotation matching the ServiceSpec's sha256.
 	corev1.LocalObjectReference `json:",inline"`
 
 	// Algorithm for encoding of the secret's hash for public inclusion in the spec
