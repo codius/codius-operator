@@ -25,9 +25,11 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	corev1 "codius-crd-operator/api/v1"
 	"codius-crd-operator/controllers"
+	"codius-crd-operator/webhooks"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -78,6 +80,10 @@ func main() {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Service")
 		os.Exit(1)
 	}
+
+	hookServer := mgr.GetWebhookServer()
+	hookServer.Register("/validate-v1-secret", &webhook.Admission{Handler: &webhooks.SecretValidator{}})
+
 	// +kubebuilder:scaffold:builder
 
 	setupLog.Info("starting manager")

@@ -95,26 +95,6 @@ type Container struct {
 	Env []EnvVar `json:"env,omitempty"`
 }
 
-type SecretEnvSource struct {
-	// The Secret to select from.
-	// Secrets must include a "codius.service" annotation matching the ServiceSpec's sha256.
-	corev1.LocalObjectReference `json:",inline"`
-
-	// Algorithm for encoding of the secret's hash for public inclusion in the spec
-	// Defaults to sha256
-	// +kubebuilder:default:=sha256
-	// +kubebuilder:validation:Enum=sha256
-	// +optional
-	Algorithm string `json:"algorithm,omitempty"`
-	// Hex-encoded hash of secret's values using the specified algorithm
-	Hash string `json:"hash"`
-}
-
-type EnvFromSource struct {
-	// The Secret to select from
-	SecretRef *SecretEnvSource `json:"secretRef"`
-}
-
 // ServiceSpec defines the desired state of Service
 type ServiceSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
@@ -125,11 +105,6 @@ type ServiceSpec struct {
 	// There must be at least one container in a Pod.
 	// Cannot be updated.
 	Containers []Container `json:"containers"`
-
-	// List of sources to populate environment variables in the containers.
-	// Cannot be updated.
-	// +optional
-	EnvFrom []EnvFromSource `json:"envFrom,omitempty"`
 
 	// Port listening for http requests.
 	// Defaults to 80

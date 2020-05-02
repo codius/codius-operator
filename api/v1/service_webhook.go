@@ -99,40 +99,35 @@ func (r *Service) ValidateDelete() error {
 }
 
 func (r *Service) ValidateEnvSources() error {
-	// Validate the hash of all envFrom secrets
+	// Verify all env secrets belong to this service
 	ctx := context.Background()
 	var secrets map[string]bool
-	for _, envFrom := range r.Spec.EnvFrom {
-		var secret corev1.Secret
-		if err := c.Get(ctx, types.NamespacedName{Name: envFrom.SecretRef.LocalObjectReference.Name, Namespace: r.Namespace}, &secret); err != nil {
-			return err
-		}
-		// check that secret has annotation with service name
-		if secret.Annotations["codius.service"] != r.Name {
-			return errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: r.Kind}, r.Name, field.ErrorList{
-				field.Invalid(field.NewPath("spec").Child("envFrom").Child("secretRef").Child("name"), envFrom.SecretRef.Name, "envFrom secret must have matching \"codius.service\" annotation"),
-			})
-		}
-		hash, err := getSha256(&secret.Data)
-		if err != nil {
-			return err
-		}
-		if hash != envFrom.SecretRef.Hash {
-			return errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: r.Kind}, r.Name, field.ErrorList{
-				field.Invalid(field.NewPath("spec").Child("envFrom").Child("secretRef").Child("hash"), envFrom.SecretRef.Hash, "envFrom hash must match sha256 of secret data"),
-			})
-		}
-		secrets[envFrom.SecretRef.LocalObjectReference.Name] = true
-	}
-
-	// Verify all env vars use a validated secret
-	// NOTE: unused envFrom secrets are ignored/accepted
 	for i, container := range r.Spec.Containers {
 		for j, env := range container.Env {
-			if env.ValueFrom != nil && secrets[env.ValueFrom.SecretKeyRef.LocalObjectReference.Name] == false {
-				return errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: r.Kind}, r.Name, field.ErrorList{
-					field.Invalid(field.NewPath("spec").Child("containers").Index(i).Child("env").Index(j).Child("valueFrom").Child("secretKeyRef").Child("localObjectReference").Child("name"), env.ValueFrom.SecretKeyRef.LocalObjectReference.Name, "valueFrom secret must be included in spec.envFrom"),
-				})
+			if env.ValueFrom == nil || secrets[env.ValueFrom.SecretKeyRef.LocalObjectReference.Name] == false {
+				var secret corev1.Secret
+				if err := c.Get(ctx, types.NamespacedName{Name: env.ValueFrom.SecretKeyRef.LocalObjectReference.Name, Namespace: r.Namespace}, &secret); err != nil {
+					return err
+				}
+				// check that secret has annotation with service name
+				if secret.Annotations["codius.service"] != r.Name {
+					return errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: r.Kind}, r.Name, field.ErrorList{
+						field.Invalid(field.NewPath("spec").Child("containers").Index(i).Child("env").Index(j).Child("valueFrom").Child("secretKeyRef").Child("localObjectReference").Child("name"), env.ValueFrom.SecretKeyRef.LocalObjectReference.Name, "env secret must have matching \"codius.service\" annotation"),
+					})
+				}
+
+				// Can this instead assume secret validating webhook guarantees secret name?
+				// hash, err := getSha256(&secret.Data)
+				// if err != nil {
+				// 	return err
+				// }
+				// if hash != secret.Name {
+				// 	return errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: r.Kind}, r.Name, field.ErrorList{
+				// 		field.Invalid(field.NewPath("spec").Child("envFrom").Child("secretRef").Child("hash"), envFrom.SecretRef.Hash, "envFrom hash must match sha256 of secret data"),
+				// 	})
+				// }
+
+				secrets[env.ValueFrom.SecretKeyRef.LocalObjectReference.Name] = true
 			}
 		}
 	}
