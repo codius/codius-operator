@@ -84,7 +84,7 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	// Check if the Service already exists, if not create a new one
 	var service corev1.Service
-	err = r.Get(ctx, types.NamespacedName{Name: dns1035Label(&codiusService.Name), Namespace: codiusService.Namespace}, &service)
+	err = r.Get(ctx, types.NamespacedName{Name: codiusService.Labels["app"], Namespace: codiusService.Namespace}, &service)
 	if err != nil && errors.IsNotFound(err) {
 		ser := serviceForCR(&codiusService)
 		// Set Codius Service instance as the owner and controller
@@ -178,7 +178,11 @@ func serviceForCR(cr *codiusv1.Service) *corev1.Service {
 	labels := labelsForCR(cr)
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      dns1035Label(&cr.Name),
+			// Service names must be DNS-1035 labels
+			// a DNS-1035 label must consist of lower case alphanumeric characters or '-',
+			// start with an alphabetic character, and end with an alphanumeric character
+			// (e.g. 'my-name',  or 'abc-123', regex used for validation is '[a-z]([-a-z0-9]*[a-z0-9])?'
+			Name:      cr.Labels["app"],
 			Namespace: cr.Namespace,
 			Labels:    labels,
 		},
@@ -196,14 +200,7 @@ func serviceForCR(cr *codiusv1.Service) *corev1.Service {
 // labelsForCR returns the labels for selecting the resources
 // belonging to the given Codius Service name.
 func labelsForCR(cr *codiusv1.Service) map[string]string {
-	return map[string]string{"app": dns1035Label(&cr.Name)}
-}
-
-// a DNS-1035 label must consist of lower case alphanumeric characters or '-',
-// start with an alphabetic character, and end with an alphanumeric character
-// (e.g. 'my-name',  or 'abc-123', regex used for validation is '[a-z]([-a-z0-9]*[a-z0-9])?'
-func dns1035Label(name *string) string {
-	return "codius-" + (*name)[:56]
+	return map[string]string{"app": cr.Labels["app"]}
 }
 
 func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {

@@ -46,7 +46,7 @@ func (v *SecretValidator) Handle(ctx context.Context, req admission.Request) adm
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
-	key := "codius.service"
+	key := "codius.hash"
 	// anno, found := secret.Annotations[key]
 	_, found := secret.Annotations[key]
 	if !found {

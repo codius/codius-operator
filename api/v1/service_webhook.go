@@ -19,8 +19,8 @@ package v1
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -56,11 +56,23 @@ var _ webhook.Defaulter = &Service{}
 func (r *Service) Default() {
 	servicelog.Info("default", "service", r)
 	servicelog.Info("default", "name", r.Name)
-	hash, err := getSha256(&r.Spec)
+	hash, err := r.getSha256()
 	if err != nil {
 		return
 	}
-	r.Name = hash
+
+	if r.Annotations == nil {
+		r.Annotations = map[string]string{}
+	}
+	r.Annotations["codius.hash"] = hash
+
+	if r.Labels == nil {
+		r.Labels = map[string]string{}
+	}
+	// a DNS-1035 label must consist of lower case alphanumeric characters or '-',
+	// start with an alphabetic character, and end with an alphanumeric character
+	// (e.g. 'my-name',  or 'abc-123', regex used for validation is '[a-z]([-a-z0-9]*[a-z0-9])?'
+	r.Labels["app"] = "codius-" + (hash)[:56]
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
@@ -72,7 +84,7 @@ var _ webhook.Validator = &Service{}
 func (r *Service) ValidateCreate() error {
 	servicelog.Info("validate create", "name", r.Name)
 
-	if err := r.ValidateName(); err != nil {
+	if err := r.ValidateHash(); err != nil {
 		return err
 	}
 	if err := r.ValidateEnvSources(); err != nil {
@@ -104,29 +116,17 @@ func (r *Service) ValidateEnvSources() error {
 	var secrets map[string]bool
 	for i, container := range r.Spec.Containers {
 		for j, env := range container.Env {
-			if env.ValueFrom == nil || secrets[env.ValueFrom.SecretKeyRef.LocalObjectReference.Name] == false {
+			if env.ValueFrom != nil && secrets[env.ValueFrom.SecretKeyRef.LocalObjectReference.Name] == false {
 				var secret corev1.Secret
 				if err := c.Get(ctx, types.NamespacedName{Name: env.ValueFrom.SecretKeyRef.LocalObjectReference.Name, Namespace: r.Namespace}, &secret); err != nil {
 					return err
 				}
 				// check that secret has annotation with service name
-				if secret.Annotations["codius.service"] != r.Name {
+				if secret.Annotations["codius.hash"] != r.Annotations["codius.hash"] {
 					return errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: r.Kind}, r.Name, field.ErrorList{
-						field.Invalid(field.NewPath("spec").Child("containers").Index(i).Child("env").Index(j).Child("valueFrom").Child("secretKeyRef").Child("localObjectReference").Child("name"), env.ValueFrom.SecretKeyRef.LocalObjectReference.Name, "env secret must have matching \"codius.service\" annotation"),
+						field.Invalid(field.NewPath("spec").Child("containers").Index(i).Child("env").Index(j).Child("valueFrom").Child("secretKeyRef").Child("localObjectReference").Child("name"), env.ValueFrom.SecretKeyRef.LocalObjectReference.Name, "env secret must have matching \"codius.hash\" annotation"),
 					})
 				}
-
-				// Can this instead assume secret validating webhook guarantees secret name?
-				// hash, err := getSha256(&secret.Data)
-				// if err != nil {
-				// 	return err
-				// }
-				// if hash != secret.Name {
-				// 	return errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: r.Kind}, r.Name, field.ErrorList{
-				// 		field.Invalid(field.NewPath("spec").Child("envFrom").Child("secretRef").Child("hash"), envFrom.SecretRef.Hash, "envFrom hash must match sha256 of secret data"),
-				// 	})
-				// }
-
 				secrets[env.ValueFrom.SecretKeyRef.LocalObjectReference.Name] = true
 			}
 		}
@@ -135,24 +135,28 @@ func (r *Service) ValidateEnvSources() error {
 	return nil
 }
 
-func (r *Service) ValidateName() error {
-	hash, err := getSha256(&r.Spec)
+func (r *Service) ValidateHash() error {
+	hash, err := r.getSha256()
 	if err != nil {
 		return err
 	}
-	if hash != r.Name {
+	if r.Annotations["codius.hash"] != hash {
 		return errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: r.Kind}, r.Name, field.ErrorList{
-			field.Invalid(field.NewPath("metadata").Child("name"), r.Name, "name must be sha256 of spec"),
+			field.Invalid(field.NewPath("metadata").Child("annotations").Child("codius.hash"), r.Name, "codius.hash annotation must be sha256 of spec"),
+		})
+	}
+	if r.Labels["app"] != "codius-"+(hash)[:56] {
+		return errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: r.Kind}, r.Name, field.ErrorList{
+			field.Invalid(field.NewPath("metadata").Child("annotations").Child("codius.hash"), r.Name, "app label must have sha256 of spec"),
 		})
 	}
 	return nil
 }
 
-func getSha256(data interface{}) (string, error) {
-	bytes, err := json.Marshal(data)
+func (r *Service) getSha256() (string, error) {
+	data, err := json.Marshal(r.Spec)
 	if err != nil {
 		return "", err
 	}
-	sum := sha256.Sum256(bytes)
-	return hex.EncodeToString(sum[:]), nil
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(data))), nil
 }

@@ -10,18 +10,4 @@ spec:
     env:
     - name: CODIUS_PUBLIC_URI
       value: https://c8s.example.com
-    - name: CODIUS_SECRET
-      valueFrom:
-        secretKeyRef:
-          name: mysecret
-          key: password
-    - name: CODIUS_SECRET2
-      valueFrom:
-        secretKeyRef:
-          name: mysecret2
-          key: password
   port: 80
-  envFrom:
-  - secretRef:
-      name: mysecret
-      hash: abc123
