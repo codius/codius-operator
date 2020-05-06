@@ -1,0 +1,11 @@
+secretGenerator:
+- name: sample-secret
+  literals:
+  - nonce=abc123
+  - password=secret
+  # - tls.crt=crt
+  # - tls.key=key
+  # type: "kubernetes.io/tls"
+commonAnnotations:
+  codius.hash: 8d86f8f44576cc37f46f0737e4496c36537130ac312383640fbf77ce062713a1
+  # codius.hash: hi

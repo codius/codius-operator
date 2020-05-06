@@ -113,19 +113,19 @@ func (r *Service) ValidateDelete() error {
 func (r *Service) ValidateEnvSources() error {
 	// Verify all env secrets belong to this service
 	ctx := context.Background()
-	var secrets map[string]bool
+	secrets := map[string]bool{}
 	for i, container := range r.Spec.Containers {
 		for j, env := range container.Env {
 			if env.ValueFrom != nil && secrets[env.ValueFrom.SecretKeyRef.LocalObjectReference.Name] == false {
 				var secret corev1.Secret
-				if err := c.Get(ctx, types.NamespacedName{Name: env.ValueFrom.SecretKeyRef.LocalObjectReference.Name, Namespace: r.Namespace}, &secret); err != nil {
-					return err
-				}
-				// check that secret has annotation with service name
-				if secret.Annotations["codius.hash"] != r.Annotations["codius.hash"] {
-					return errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: r.Kind}, r.Name, field.ErrorList{
-						field.Invalid(field.NewPath("spec").Child("containers").Index(i).Child("env").Index(j).Child("valueFrom").Child("secretKeyRef").Child("localObjectReference").Child("name"), env.ValueFrom.SecretKeyRef.LocalObjectReference.Name, "env secret must have matching \"codius.hash\" annotation"),
-					})
+				if err := c.Get(ctx, types.NamespacedName{Name: env.ValueFrom.SecretKeyRef.LocalObjectReference.Name, Namespace: r.Namespace}, &secret); err == nil {
+					// check that secret has annotation with service name
+					// it's ok if the secret doesn't exist yet
+					if secret.Annotations["codius.hash"] != r.Annotations["codius.hash"] {
+						return errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: r.Kind}, r.Name, field.ErrorList{
+							field.Invalid(field.NewPath("spec").Child("containers").Index(i).Child("env").Index(j).Child("valueFrom").Child("secretKeyRef").Child("localObjectReference").Child("name"), env.ValueFrom.SecretKeyRef.LocalObjectReference.Name, "env secret must have matching \"codius.hash\" annotation"),
+						})
+					}
 				}
 				secrets[env.ValueFrom.SecretKeyRef.LocalObjectReference.Name] = true
 			}

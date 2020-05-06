@@ -1,0 +1,18 @@
+apiVersion: core.codius.org/v1
+kind: Service
+metadata:
+  name: service-sample-with-secret
+spec:
+  containers:
+  - name: busybox
+    image: busybox
+    command: ["sleep", "3600"]
+    env:
+    - name: CODIUS_PUBLIC_URI
+      value: https://c8s.example.com
+    - name: CODIUS_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: sample-secret-hth929fb6b
+          key: password
+  port: 80

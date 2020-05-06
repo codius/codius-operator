@@ -26,7 +26,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -63,6 +65,29 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	var deployment appsv1.Deployment
 	err := r.Get(ctx, req.NamespacedName, &deployment)
 	if err != nil && errors.IsNotFound(err) {
+		// Verify all env secrets exist and belong to this service before creating deployment
+		secrets := map[string]bool{}
+		for i, container := range codiusService.Spec.Containers {
+			for j, env := range container.Env {
+				if env.ValueFrom != nil && secrets[env.ValueFrom.SecretKeyRef.LocalObjectReference.Name] == false {
+					var secret corev1.Secret
+					if err := r.Get(ctx, types.NamespacedName{Name: env.ValueFrom.SecretKeyRef.LocalObjectReference.Name, Namespace: codiusService.Namespace}, &secret); err != nil {
+						log.Error(err, "Failed to get Secret", "Secret.Namespace", codiusService.Namespace, "Secret.Name", env.ValueFrom.SecretKeyRef.LocalObjectReference.Name)
+						return ctrl.Result{}, err
+					}
+					if secret.Annotations["codius.hash"] != codiusService.Annotations["codius.hash"] {
+						//TODO: update status to say this service can never run
+						//      or just delete service?
+						log.Error(err, "Secret annotation doesn't match this service", "Secret.Namespace", codiusService.Namespace, "Secret.Name", env.ValueFrom.SecretKeyRef.LocalObjectReference.Name)
+						return ctrl.Result{}, errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: codiusService.Kind}, codiusService.Name, field.ErrorList{
+							field.Invalid(field.NewPath("spec").Child("containers").Index(i).Child("env").Index(j).Child("valueFrom").Child("secretKeyRef").Child("localObjectReference").Child("name"), env.ValueFrom.SecretKeyRef.LocalObjectReference.Name, "env secret must have matching \"codius.hash\" annotation"),
+						})
+					}
+					secrets[env.ValueFrom.SecretKeyRef.LocalObjectReference.Name] = true
+				}
+			}
+		}
+
 		dep := deploymentForCR(&codiusService)
 		// Set Codius Service as the owner and controller
 		if err := controllerutil.SetControllerReference(&codiusService, dep, r.Scheme); err != nil {
