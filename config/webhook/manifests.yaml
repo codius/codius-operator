@@ -24,6 +24,7 @@ webhooks:
     - UPDATE
     resources:
     - services
+  sideEffects: None
 
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
@@ -50,6 +51,7 @@ webhooks:
     - UPDATE
     resources:
     - services
+  sideEffects: None
 - clientConfig:
     caBundle: Cg==
     service:
