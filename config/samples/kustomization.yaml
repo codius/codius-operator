@@ -1,5 +1,6 @@
 secretGenerator:
 - name: sample-secret
+  namespace: codius
   literals:
   - nonce=abc123
   - password=secret

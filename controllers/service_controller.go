@@ -43,10 +43,12 @@ type ServiceReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=core.codius.org,resources=services,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core.codius.org,resources=services/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=list;watch;get;patch;create;update
-// +kubebuilder:rbac:groups=core,resources=services,verbs=list;watch;get;patch;create;update
+// +kubebuilder:rbac:namespace=codius,groups=core.codius.org,resources=services,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:namespace=codius,groups=core.codius.org,resources=services/status,verbs=get;update;patch
+// +kubebuilder:rbac:namespace=codius,groups=apps,resources=deployments,verbs=list;watch;get;patch;create;update
+// +kubebuilder:rbac:namespace=codius,groups=core,resources=services,verbs=list;watch;get;patch;create;update
+// +kubebuilder:rbac:namespace=codius,groups=core,resources=secrets,verbs=list;watch;get
+
 func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
 	log := r.Log.WithValues("service", req.NamespacedName)
