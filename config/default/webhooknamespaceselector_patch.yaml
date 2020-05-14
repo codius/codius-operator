@@ -1,4 +1,4 @@
-# This patch add namespaceSelector to admission webhook config.
+# This patch adds namespaceSelector to admission webhook config.
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
 metadata:
