@@ -18,16 +18,19 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networking "k8s.io/api/networking/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,6 +50,7 @@ type ServiceReconciler struct {
 // +kubebuilder:rbac:namespace=codius,groups=core.codius.org,resources=services/status,verbs=get;update;patch
 // +kubebuilder:rbac:namespace=codius,groups=apps,resources=deployments,verbs=list;watch;get;patch;create;update
 // +kubebuilder:rbac:namespace=codius,groups=core,resources=services,verbs=list;watch;get;patch;create;update
+// +kubebuilder:rbac:namespace=codius,groups=networking.k8s.io,resources=ingresses,verbs=list;watch;get;patch;create;update
 // +kubebuilder:rbac:namespace=codius,groups=core,resources=secrets,verbs=list;watch;get
 
 func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
@@ -130,8 +134,29 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
-	// Deployment and Service already exists - don't requeue
-	log.Info("Skip reconcile: Deployment and Service already exist", "Namespace", deployment.Namespace, "Deployment.Name", deployment.Name, "Service.Name", service.Name)
+	// Check if the Ingress already exists, if not create a new one
+	var ingress networking.Ingress
+	err = r.Get(ctx, req.NamespacedName, &ingress)
+	if err != nil && errors.IsNotFound(err) {
+		ing := ingressForCR(&codiusService)
+		// Set Codius Service instance as the owner and controller
+		if err := controllerutil.SetControllerReference(&codiusService, ing, r.Scheme); err != nil {
+			return ctrl.Result{}, err
+		}
+		log.Info("Creating a new Ingress.", "Ingress.Namespace", ing.Namespace, "Ingress.Name", ing.Name)
+		err = r.Client.Create(ctx, ing)
+		if err != nil {
+			log.Error(err, "Failed to create new Ingress.", "Ingress.Namespace", ing.Namespace, "Ingress.Name", ing.Name)
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	} else if err != nil {
+		log.Error(err, "Failed to get Ingress.")
+		return ctrl.Result{}, err
+	}
+
+	// Deployment, Service, and Ingress already exist - don't requeue
+	log.Info("Skip reconcile: Deployment, Service, and Ingress already exist", "Namespace", codiusService.Namespace, "Deployment.Name", deployment.Name, "Service.Name", service.Name, "Ingress.Name", ingress.Name)
 	return ctrl.Result{}, nil
 }
 
@@ -224,6 +249,52 @@ func serviceForCR(cr *codiusv1.Service) *corev1.Service {
 	}
 }
 
+func ingressForCR(cr *codiusv1.Service) *networking.Ingress {
+	labels := labelsForCR(cr)
+	return &networking.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.Name,
+			Namespace: cr.Namespace,
+			Labels:    labels,
+			Annotations: map[string]string{
+				"kubernetes.io/ingress.class":        "traefik",
+				"ingress.kubernetes.io/ssl-redirect": "true",
+				"ingress.kubernetes.io/auth-type":    "forward",
+				"ingress.kubernetes.io/auth-url":     os.Getenv("CODIUS_AUTH_URL"),
+			},
+		},
+		Spec: networking.IngressSpec{
+			TLS: []networking.IngressTLS{
+				{
+					Hosts: []string{
+						fmt.Sprintf("*.%s", os.Getenv("CODIUS_HOSTNAME")),
+					},
+					SecretName: os.Getenv("CODIUS_CERT_SECRET"),
+				},
+			},
+			Rules: []networking.IngressRule{
+				{
+					Host: fmt.Sprintf("%s.%s", cr.Name, os.Getenv("CODIUS_HOSTNAME")),
+					IngressRuleValue: networking.IngressRuleValue{
+						HTTP: &networking.HTTPIngressRuleValue{
+							Paths: []networking.HTTPIngressPath{
+								{
+									Backend: networking.IngressBackend{
+										ServiceName: cr.Labels["app"],
+										// Currently unable to convert int32 to IntOrString...
+										// https://godoc.org/k8s.io/apimachinery/pkg/util/intstr#IntOrString
+										ServicePort: intstr.FromInt(int(cr.Spec.Port)),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 // labelsForCR returns the labels for selecting the resources
 // belonging to the given Codius Service name.
 func labelsForCR(cr *codiusv1.Service) map[string]string {
@@ -235,5 +306,6 @@ func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&codiusv1.Service{}).
 		Owns(&corev1.Service{}).
 		Owns(&appsv1.Deployment{}).
+		Owns(&networking.Ingress{}).
 		Complete(r)
 }
