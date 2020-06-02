@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1
+package v1alpha1
 
 import (
 	"context"
@@ -48,7 +48,7 @@ func (r *Service) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 
-// +kubebuilder:webhook:path=/mutate-core-codius-org-v1-service,mutating=true,failurePolicy=fail,sideEffects=None,groups=core.codius.org,resources=services,verbs=create;update,versions=v1,name=mservice.kb.io
+// +kubebuilder:webhook:path=/mutate-core-codius-org-v1alpha1-service,mutating=true,failurePolicy=fail,sideEffects=None,groups=core.codius.org,resources=services,verbs=create;update,versions=v1alpha1,name=mservice.kb.io
 
 var _ webhook.Defaulter = &Service{}
 
@@ -76,7 +76,7 @@ func (r *Service) Default() {
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
-// +kubebuilder:webhook:verbs=create;update,path=/validate-core-codius-org-v1-service,mutating=false,failurePolicy=fail,sideEffects=None,groups=core.codius.org,resources=services,versions=v1,name=vservice.kb.io
+// +kubebuilder:webhook:verbs=create;update,path=/validate-core-codius-org-v1alpha1-service,mutating=false,failurePolicy=fail,sideEffects=None,groups=core.codius.org,resources=services,versions=v1alpha1,name=vservice.kb.io
 
 var _ webhook.Validator = &Service{}
 

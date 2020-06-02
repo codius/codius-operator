@@ -11,14 +11,14 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /mutate-core-codius-org-v1-service
+      path: /mutate-core-codius-org-v1alpha1-service
   failurePolicy: Fail
   name: mservice.kb.io
   rules:
   - apiGroups:
     - core.codius.org
     apiVersions:
-    - v1
+    - v1alpha1
     operations:
     - CREATE
     - UPDATE
@@ -38,14 +38,14 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-core-codius-org-v1-service
+      path: /validate-core-codius-org-v1alpha1-service
   failurePolicy: Fail
   name: vservice.kb.io
   rules:
   - apiGroups:
     - core.codius.org
     apiVersions:
-    - v1
+    - v1alpha1
     operations:
     - CREATE
     - UPDATE

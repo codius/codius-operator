@@ -36,7 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	codiusv1 "codius-crd-operator/api/v1"
+	"codius-crd-operator/api/v1alpha1"
 )
 
 // ServiceReconciler reconciles a Service object
@@ -58,7 +58,7 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("service", req.NamespacedName)
 
 	// your logic here
-	var codiusService codiusv1.Service
+	var codiusService v1alpha1.Service
 	if err := r.Get(ctx, req.NamespacedName, &codiusService); err != nil {
 		log.Error(err, "unable to fetch Codius Service")
 		// we'll ignore not-found errors, since they can't be fixed by an immediate
@@ -160,7 +160,7 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return ctrl.Result{}, nil
 }
 
-func deploymentForCR(cr *codiusv1.Service) *appsv1.Deployment {
+func deploymentForCR(cr *v1alpha1.Service) *appsv1.Deployment {
 	labels := labelsForCR(cr)
 	containers := make([]corev1.Container, len(cr.Spec.Containers))
 	for i, container := range cr.Spec.Containers {
@@ -226,7 +226,7 @@ func deploymentForCR(cr *codiusv1.Service) *appsv1.Deployment {
 	}
 }
 
-func serviceForCR(cr *codiusv1.Service) *corev1.Service {
+func serviceForCR(cr *v1alpha1.Service) *corev1.Service {
 	labels := labelsForCR(cr)
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -249,7 +249,7 @@ func serviceForCR(cr *codiusv1.Service) *corev1.Service {
 	}
 }
 
-func ingressForCR(cr *codiusv1.Service) *networking.Ingress {
+func ingressForCR(cr *v1alpha1.Service) *networking.Ingress {
 	labels := labelsForCR(cr)
 	return &networking.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
@@ -297,13 +297,13 @@ func ingressForCR(cr *codiusv1.Service) *networking.Ingress {
 
 // labelsForCR returns the labels for selecting the resources
 // belonging to the given Codius Service name.
-func labelsForCR(cr *codiusv1.Service) map[string]string {
+func labelsForCR(cr *v1alpha1.Service) map[string]string {
 	return map[string]string{"app": cr.Labels["app"]}
 }
 
 func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&codiusv1.Service{}).
+		For(&v1alpha1.Service{}).
 		Owns(&corev1.Service{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&networking.Ingress{}).
