@@ -27,7 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	corev1 "codius-crd-operator/api/v1"
+	"codius-crd-operator/api/v1alpha1"
 	"codius-crd-operator/controllers"
 	"codius-crd-operator/webhooks"
 	// +kubebuilder:scaffold:imports
@@ -41,7 +41,7 @@ var (
 func init() {
 	_ = clientgoscheme.AddToScheme(scheme)
 
-	_ = corev1.AddToScheme(scheme)
+	_ = v1alpha1.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -77,7 +77,7 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Service")
 		os.Exit(1)
 	}
-	if err = (&corev1.Service{}).SetupWebhookWithManager(mgr); err != nil {
+	if err = (&v1alpha1.Service{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Service")
 		os.Exit(1)
 	}

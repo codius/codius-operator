@@ -16,7 +16,7 @@ spec:
     singular: service
   scope: Namespaced
   versions:
-  - name: v1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Service is the Schema for the services API

@@ -3,5 +3,5 @@ repo: codius-crd-operator
 resources:
 - group: core
   kind: Service
-  version: v1
+  version: v1alpha1
 version: "2"

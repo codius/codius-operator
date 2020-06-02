@@ -1,4 +1,4 @@
-apiVersion: core.codius.org/v1
+apiVersion: core.codius.org/v1alpha1
 kind: Service
 metadata:
   name: service-sample-with-secret
