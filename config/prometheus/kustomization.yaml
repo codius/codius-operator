@@ -1,4 +1,2 @@
-# Adds namespace to all resources.
-namespace: codius-crd-operator-system
 resources:
 - monitor.yaml
