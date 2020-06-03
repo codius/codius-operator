@@ -30,6 +30,10 @@ Configure by patching the [controller manager deployment](config/manager/manager
 * Type: String
 * Description: Hostname of the Codius host
 
+#### CODIUS_NAMESPACE
+* Type: String
+* Description: Namespace in which to create deployments, services, and ingresses. The operator controller manager must have the necessary [permissions](config/rbac/role.yaml) in this namespace.
+
 #### RUNTIME_CLASS_NAME
 * Type: String
 * Description: [RuntimeClass](https://kubernetes.io/docs/concepts/containers/runtime-class/) to use for Codius service deployments' `runtimeClassName`

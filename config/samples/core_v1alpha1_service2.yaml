@@ -2,7 +2,6 @@ apiVersion: core.codius.org/v1alpha1
 kind: Service
 metadata:
   name: service-sample-with-secret
-  namespace: codius
 spec:
   containers:
   - name: busybox

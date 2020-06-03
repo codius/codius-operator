@@ -60,7 +60,7 @@ func main() {
 		Port:               9443,
 		LeaderElection:     enableLeaderElection,
 		LeaderElectionID:   "05b567c1.codius.org",
-		Namespace:          "codius",
+		Namespace:          os.Getenv("CODIUS_NAMESPACE"),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")

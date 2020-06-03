@@ -120,6 +120,7 @@ type ServiceStatus struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:resource:scope=Cluster
 
 // Service is the Schema for the services API
 type Service struct {

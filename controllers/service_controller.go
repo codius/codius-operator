@@ -44,8 +44,8 @@ type ServiceReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:namespace=codius,groups=core.codius.org,resources=services,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:namespace=codius,groups=core.codius.org,resources=services/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=core.codius.org,resources=services,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core.codius.org,resources=services/status,verbs=get;update;patch
 // +kubebuilder:rbac:namespace=codius,groups=apps,resources=deployments,verbs=list;watch;get;patch;create;update
 // +kubebuilder:rbac:namespace=codius,groups=core,resources=services,verbs=list;watch;get;patch;create;update
 // +kubebuilder:rbac:namespace=codius,groups=networking.k8s.io,resources=ingresses,verbs=list;watch;get;patch;create;update
@@ -66,7 +66,7 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	// Check if the deployment already exists, if not create a new one
 	var deployment appsv1.Deployment
-	err := r.Get(ctx, req.NamespacedName, &deployment)
+	err := r.Get(ctx, types.NamespacedName{Name: codiusService.Name, Namespace: os.Getenv("CODIUS_NAMESPACE")}, &deployment)
 	if err != nil && errors.IsNotFound(err) {
 		dep := deploymentForCR(&codiusService)
 		// Set Codius Service as the owner and controller
@@ -89,7 +89,7 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	// Check if the Service already exists, if not create a new one
 	var service corev1.Service
-	err = r.Get(ctx, types.NamespacedName{Name: codiusService.Labels["app"], Namespace: codiusService.Namespace}, &service)
+	err = r.Get(ctx, types.NamespacedName{Name: codiusService.Labels["app"], Namespace: os.Getenv("CODIUS_NAMESPACE")}, &service)
 	if err != nil && errors.IsNotFound(err) {
 		ser := serviceForCR(&codiusService)
 		// Set Codius Service instance as the owner and controller
@@ -110,7 +110,7 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	// Check if the Ingress already exists, if not create a new one
 	var ingress networking.Ingress
-	err = r.Get(ctx, req.NamespacedName, &ingress)
+	err = r.Get(ctx, types.NamespacedName{Name: codiusService.Name, Namespace: os.Getenv("CODIUS_NAMESPACE")}, &ingress)
 	if err != nil && errors.IsNotFound(err) {
 		ing := ingressForCR(&codiusService)
 		// Set Codius Service instance as the owner and controller
@@ -130,7 +130,7 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	// Deployment, Service, and Ingress already exist - don't requeue
-	log.Info("Skip reconcile: Deployment, Service, and Ingress already exist", "Namespace", codiusService.Namespace, "Deployment.Name", deployment.Name, "Service.Name", service.Name, "Ingress.Name", ingress.Name)
+	log.Info("Skip reconcile: Deployment, Service, and Ingress already exist", "Namespace", os.Getenv("CODIUS_NAMESPACE"), "Deployment.Name", deployment.Name, "Service.Name", service.Name, "Ingress.Name", ingress.Name)
 	return ctrl.Result{}, nil
 }
 
@@ -169,7 +169,7 @@ func deploymentForCR(cr *v1alpha1.Service) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
-			Namespace: cr.Namespace,
+			Namespace: os.Getenv("CODIUS_NAMESPACE"),
 			Labels:    labels,
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -201,7 +201,7 @@ func serviceForCR(cr *v1alpha1.Service) *corev1.Service {
 			// start with an alphabetic character, and end with an alphanumeric character
 			// (e.g. 'my-name',  or 'abc-123', regex used for validation is '[a-z]([-a-z0-9]*[a-z0-9])?'
 			Name:      cr.Labels["app"],
-			Namespace: cr.Namespace,
+			Namespace: os.Getenv("CODIUS_NAMESPACE"),
 			Labels:    labels,
 		},
 		Spec: corev1.ServiceSpec{
@@ -220,7 +220,7 @@ func ingressForCR(cr *v1alpha1.Service) *networking.Ingress {
 	return &networking.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
-			Namespace: cr.Namespace,
+			Namespace: os.Getenv("CODIUS_NAMESPACE"),
 			Labels:    labels,
 			Annotations: map[string]string{
 				"kubernetes.io/ingress.class":        "traefik",
