@@ -22,9 +22,3 @@ webhooks:
     - key: app
       operator: In
       values: ["codius"]
-- name: vsecret.kb.io
-  namespaceSelector:
-    matchExpressions:
-    - key: app
-      operator: In
-      values: ["codius"]

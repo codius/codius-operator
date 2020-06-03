@@ -33,6 +33,13 @@ spec:
             type: string
           metadata:
             type: object
+          secretData:
+            additionalProperties:
+              type: string
+            description: Data contains the secret data. Each key must consist of alphanumeric
+              characters, '-', '_' or '.'. It is never output when reading from the
+              API.
+            type: object
           spec:
             description: ServiceSpec defines the desired state of Service
             properties:
@@ -90,18 +97,15 @@ spec:
                               Cannot be used if value is not empty.
                             properties:
                               secretKeyRef:
-                                description: Selects a key of a secret in the pod's
-                                  namespace
+                                description: Selects a key of secret data
                                 properties:
-                                  key:
-                                    description: The key of the secret to select from.  Must
-                                      be a valid secret key.
+                                  hash:
+                                    description: The sha256 hash of the secret data
+                                      to select from.
                                     type: string
-                                  name:
-                                    description: 'Name of the referent. More info:
-                                      https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                      TODO: Add other useful fields. apiVersion, kind,
-                                      uid?'
+                                  key:
+                                    description: The key of the secret data to select
+                                      from.  Must be a valid secret key.
                                     type: string
                                 required:
                                 - key

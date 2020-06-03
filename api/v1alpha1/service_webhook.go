@@ -17,16 +17,13 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -56,7 +53,22 @@ var _ webhook.Defaulter = &Service{}
 func (r *Service) Default() {
 	servicelog.Info("default", "service", r)
 	servicelog.Info("default", "name", r.Name)
-	hash, err := r.getSha256()
+
+	if r.SecretData != nil {
+		secretHash, err := r.hashSecret()
+		if err != nil {
+			return
+		}
+		for _, container := range r.Spec.Containers {
+			for _, env := range container.Env {
+				if env.ValueFrom != nil {
+					env.ValueFrom.SecretKeyRef.Hash = secretHash
+				}
+			}
+		}
+	}
+
+	hash, err := r.hashSpec()
 	if err != nil {
 		return
 	}
@@ -87,7 +99,7 @@ func (r *Service) ValidateCreate() error {
 	if err := r.ValidateHash(); err != nil {
 		return err
 	}
-	if err := r.ValidateEnvSources(); err != nil {
+	if err := r.ValidateSecretData(); err != nil {
 		return err
 	}
 
@@ -110,24 +122,34 @@ func (r *Service) ValidateDelete() error {
 	return nil
 }
 
-func (r *Service) ValidateEnvSources() error {
-	// Verify all env secrets belong to this service
-	ctx := context.Background()
-	secrets := map[string]bool{}
+func (r *Service) ValidateSecretData() error {
+	var secretHash string
+	if r.SecretData != nil {
+		var err error
+		secretHash, err = r.hashSecret()
+		if err != nil {
+			return errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: r.Kind}, r.Name, field.ErrorList{
+				field.Invalid(field.NewPath("secretData"), r.SecretData, "unable to hash secretData"),
+			})
+		}
+	}
 	for i, container := range r.Spec.Containers {
 		for j, env := range container.Env {
-			if env.ValueFrom != nil && secrets[env.ValueFrom.SecretKeyRef.LocalObjectReference.Name] == false {
-				var secret corev1.Secret
-				if err := c.Get(ctx, types.NamespacedName{Name: env.ValueFrom.SecretKeyRef.LocalObjectReference.Name, Namespace: r.Namespace}, &secret); err == nil {
-					// check that secret has annotation with service name
-					// it's ok if the secret doesn't exist yet
-					if secret.Annotations["codius.hash"] != r.Annotations["codius.hash"] {
-						return errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: r.Kind}, r.Name, field.ErrorList{
-							field.Invalid(field.NewPath("spec").Child("containers").Index(i).Child("env").Index(j).Child("valueFrom").Child("secretKeyRef").Child("localObjectReference").Child("name"), env.ValueFrom.SecretKeyRef.LocalObjectReference.Name, "env secret must have matching \"codius.hash\" annotation"),
-						})
-					}
+			if env.ValueFrom != nil {
+				if env.Value != "" {
+					return errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: r.Kind}, r.Name, field.ErrorList{
+						field.Invalid(field.NewPath("spec").Child("containers").Index(i).Child("env").Index(j), env, "env value and valueFrom are mutually exclusive"),
+					})
 				}
-				secrets[env.ValueFrom.SecretKeyRef.LocalObjectReference.Name] = true
+				if _, ok := r.SecretData[env.ValueFrom.SecretKeyRef.Key]; !ok {
+					return errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: r.Kind}, r.Name, field.ErrorList{
+						field.Invalid(field.NewPath("spec").Child("containers").Index(i).Child("env").Index(j).Child("valueFrom").Child("secretKeyRef").Child("key"), env.ValueFrom.SecretKeyRef.Key, "missing env secret data"),
+					})
+				} else if env.ValueFrom.SecretKeyRef.Hash != secretHash {
+					return errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: r.Kind}, r.Name, field.ErrorList{
+						field.Invalid(field.NewPath("spec").Child("containers").Index(i).Child("env").Index(j).Child("valueFrom").Child("secretKeyRef").Child("hash"), env.ValueFrom.SecretKeyRef.Hash, "invalid env secret hash"),
+					})
+				}
 			}
 		}
 	}
@@ -136,7 +158,7 @@ func (r *Service) ValidateEnvSources() error {
 }
 
 func (r *Service) ValidateHash() error {
-	hash, err := r.getSha256()
+	hash, err := r.hashSpec()
 	if err != nil {
 		return err
 	}
@@ -153,8 +175,16 @@ func (r *Service) ValidateHash() error {
 	return nil
 }
 
-func (r *Service) getSha256() (string, error) {
+func (r *Service) hashSpec() (string, error) {
 	data, err := json.Marshal(r.Spec)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(data))), nil
+}
+
+func (r *Service) hashSecret() (string, error) {
+	data, err := json.Marshal(r.SecretData)
 	if err != nil {
 		return "", err
 	}

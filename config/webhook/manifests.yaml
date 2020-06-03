@@ -52,21 +52,3 @@ webhooks:
     resources:
     - services
   sideEffects: None
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: webhook-service
-      namespace: system
-      path: /validate-v1-secret
-  failurePolicy: Fail
-  name: vsecret.kb.io
-  rules:
-  - apiGroups:
-    - ""
-    apiVersions:
-    - v1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - secrets

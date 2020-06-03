@@ -17,7 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -25,14 +24,15 @@ import (
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 type SecretKeySelector struct {
-	// The name of the secret in the pod's namespace to select from.
-	corev1.LocalObjectReference `json:",inline"`
-	// The key of the secret to select from.  Must be a valid secret key.
+	// The sha256 hash of the secret data to select from.
+	// +optional
+	Hash string `json:"hash,omitempty"`
+	// The key of the secret data to select from.  Must be a valid secret key.
 	Key string `json:"key"`
 }
 
 type EnvVarSource struct {
-	// Selects a key of a secret in the pod's namespace
+	// Selects a key of secret data
 	SecretKeyRef SecretKeySelector `json:"secretKeyRef"`
 }
 
@@ -126,7 +126,15 @@ type Service struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ServiceSpec   `json:"spec,omitempty"`
+	Spec ServiceSpec `json:"spec,omitempty"`
+
+	// Data contains the secret data. Each key must consist of alphanumeric
+	// characters, '-', '_' or '.'.
+	// It is never output when reading from the API.
+	// +k8s:conversion-gen=false
+	// +optional
+	SecretData map[string]string `json:"secretData,omitempty"`
+
 	Status ServiceStatus `json:"status,omitempty"`
 }
 
