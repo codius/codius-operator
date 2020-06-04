@@ -1,0 +1,4 @@
+resources:
+- hello.yaml
+- hello_service.yaml
+- networkpolicy.yaml

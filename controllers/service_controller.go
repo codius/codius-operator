@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 
 	"github.com/go-logr/logr"
@@ -68,7 +69,11 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	var deployment appsv1.Deployment
 	err := r.Get(ctx, types.NamespacedName{Name: codiusService.Name, Namespace: os.Getenv("CODIUS_NAMESPACE")}, &deployment)
 	if err != nil && errors.IsNotFound(err) {
-		dep := deploymentForCR(&codiusService)
+		dep, err := deploymentForCR(&codiusService)
+		if err != nil {
+			log.Error(err, "Failed to create new Deployment")
+			return ctrl.Result{}, err
+		}
 		// Set Codius Service as the owner and controller
 		if err := controllerutil.SetControllerReference(&codiusService, dep, r.Scheme); err != nil {
 			return ctrl.Result{}, err
@@ -134,7 +139,7 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return ctrl.Result{}, nil
 }
 
-func deploymentForCR(cr *v1alpha1.Service) *appsv1.Deployment {
+func deploymentForCR(cr *v1alpha1.Service) (*appsv1.Deployment, error) {
 	labels := labelsForCR(cr)
 	containers := make([]corev1.Container, len(cr.Spec.Containers))
 	for i, container := range cr.Spec.Containers {
@@ -160,12 +165,18 @@ func deploymentForCR(cr *v1alpha1.Service) *appsv1.Deployment {
 	}
 
 	automountServiceAccountToken := false
+	enableServiceLinks := false
 
 	var pRuntimeClassName *string
 	runtimeClassName := os.Getenv("RUNTIME_CLASS_NAME")
 	if runtimeClassName != "" {
 		pRuntimeClassName = &runtimeClassName
 	}
+	ips, err := net.LookupHost(os.Getenv("CODIUS_HELLO_SVC_URL"))
+	if err != nil {
+		return nil, err
+	}
+	initCommand := fmt.Sprintf("while wget -T 1 --spider %s; do echo waiting for network policy enforcement; sleep 1; done", ips[0])
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
@@ -184,12 +195,20 @@ func deploymentForCR(cr *v1alpha1.Service) *appsv1.Deployment {
 				Spec: corev1.PodSpec{
 					Containers:                   containers,
 					DNSPolicy:                    corev1.DNSDefault,
+					EnableServiceLinks:           &enableServiceLinks,
 					AutomountServiceAccountToken: &automountServiceAccountToken,
 					RuntimeClassName:             pRuntimeClassName,
+					InitContainers: []corev1.Container{
+						{
+							Image:   "busybox:1.31",
+							Name:    "init-network-policy",
+							Command: []string{"sh", "-c", initCommand},
+						},
+					},
 				},
 			},
 		},
-	}
+	}, nil
 }
 
 func serviceForCR(cr *v1alpha1.Service) *corev1.Service {
