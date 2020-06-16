@@ -37,16 +37,15 @@ spec:
             additionalProperties:
               type: string
             description: Data contains the secret data. Each key must consist of alphanumeric
-              characters, '-', '_' or '.'. It is never output when reading from the
-              API.
+              characters, '-', '_' or '.'.
             type: object
           spec:
             description: ServiceSpec defines the desired state of Service
             properties:
               containers:
                 description: List of containers belonging to the pod. Containers cannot
-                  currently be added or removed. There must be at least one container
-                  in a Pod. Cannot be updated.
+                  currently be added or removed. There must be at least one container.
+                  Cannot be updated.
                 items:
                   properties:
                     args:

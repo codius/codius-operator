@@ -102,7 +102,7 @@ type ServiceSpec struct {
 
 	// List of containers belonging to the pod.
 	// Containers cannot currently be added or removed.
-	// There must be at least one container in a Pod.
+	// There must be at least one container.
 	// Cannot be updated.
 	Containers []Container `json:"containers"`
 
@@ -131,8 +131,6 @@ type Service struct {
 
 	// Data contains the secret data. Each key must consist of alphanumeric
 	// characters, '-', '_' or '.'.
-	// It is never output when reading from the API.
-	// +k8s:conversion-gen=false
 	// +optional
 	SecretData map[string]string `json:"secretData,omitempty"`
 
