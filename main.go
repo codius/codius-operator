@@ -28,6 +28,7 @@ import (
 
 	corev1alpha1 "github.com/codius/codius-crd-operator/api/v1alpha1"
 	"github.com/codius/codius-crd-operator/controllers"
+	"github.com/codius/codius-crd-operator/servers"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -45,8 +46,10 @@ func init() {
 
 func main() {
 	var metricsAddr string
+	var servicesApiAddr string
 	var enableLeaderElection bool
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&servicesApiAddr, "services-api-addr", ":8081", "The address the services API endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
@@ -77,6 +80,14 @@ func main() {
 	}
 	if err = (&corev1alpha1.Service{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Service")
+		os.Exit(1)
+	}
+	if err = mgr.Add(&servers.ServicesApi{
+		BindAddress: servicesApiAddr,
+		Client:      mgr.GetClient(),
+		Log:         ctrl.Log.WithName("servers").WithName("Services API"),
+	}); err != nil {
+		setupLog.Error(err, "unable to create services API web server", "server", "Services API")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

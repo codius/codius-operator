@@ -20,6 +20,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -76,7 +77,8 @@ func (r *Service) Default() {
 	if r.Annotations == nil {
 		r.Annotations = map[string]string{}
 	}
-	r.Annotations["codius.hash"] = hash
+	r.Annotations["codius.org/spec-hash"] = hash
+	r.Annotations["codius.org/hostname"] = fmt.Sprintf("%s.%s", r.Name, os.Getenv("CODIUS_HOSTNAME"))
 
 	if r.Labels == nil {
 		r.Labels = map[string]string{}
@@ -84,7 +86,8 @@ func (r *Service) Default() {
 	// a DNS-1035 label must consist of lower case alphanumeric characters or '-',
 	// start with an alphabetic character, and end with an alphanumeric character
 	// (e.g. 'my-name',  or 'abc-123', regex used for validation is '[a-z]([-a-z0-9]*[a-z0-9])?'
-	r.Labels["app"] = "codius-" + (hash)[:56]
+	// and must be no more than 63 characters.
+	r.Labels["app"] = "svc-" + (hash)[:59]
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
@@ -162,14 +165,14 @@ func (r *Service) ValidateHash() error {
 	if err != nil {
 		return err
 	}
-	if r.Annotations["codius.hash"] != hash {
+	if r.Annotations["codius.org/spec-hash"] != hash {
 		return errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: r.Kind}, r.Name, field.ErrorList{
-			field.Invalid(field.NewPath("metadata").Child("annotations").Child("codius.hash"), r.Name, "codius.hash annotation must be sha256 of spec"),
+			field.Invalid(field.NewPath("metadata").Child("annotations").Child("codius.org/spec-hash"), r.Annotations["codius.org/spec-hash"], "codius.org/spec-hash annotation must be sha256 of spec"),
 		})
 	}
-	if r.Labels["app"] != "codius-"+(hash)[:56] {
+	if r.Labels["app"] != "svc-"+(hash)[:59] {
 		return errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: r.Kind}, r.Name, field.ErrorList{
-			field.Invalid(field.NewPath("metadata").Child("annotations").Child("codius.hash"), r.Name, "app label must have sha256 of spec"),
+			field.Invalid(field.NewPath("metadata").Child("labels").Child("app"), r.Labels["app"], "app label must have sha256 of spec"),
 		})
 	}
 	return nil
