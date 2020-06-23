@@ -30,6 +30,14 @@ Configure by patching the [controller manager deployment](config/manager/manager
 * Type: String
 * Description: Namespace in which to create deployments, services, and ingresses. The operator controller manager must have the necessary [permissions](config/rbac/role.yaml) in this namespace. This is also the namespace to which the [network policy](config/networkpolicy/networkpolicy.yaml) should be applied.
 
+#### RECEIPT_VERIFIER_URL
+* Type: String
+* Description: URL of the [receipt verifier](https://github.com/coilhq/receipt-verifier/) with which to deduct paid balances.
+
+#### REQUEST_PRICE
+* Type: Number
+* Description: The amount required to have been paid to serve a request. Denominated in the host's asset (code and scale).
+
 #### RUNTIME_CLASS_NAME
 * Type: String
 * Description: [RuntimeClass](https://kubernetes.io/docs/concepts/containers/runtime-class/) to use for Codius service deployments' `runtimeClassName`

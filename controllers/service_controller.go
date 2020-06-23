@@ -29,6 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -203,7 +204,10 @@ func serviceForCR(cr *v1alpha1.Service) *corev1.Service {
 			Selector: labels,
 			Ports: []corev1.ServicePort{
 				{
-					Port: cr.Spec.Port,
+					Port: 80,
+					// Currently unable to convert int32 to IntOrString...
+					// https://godoc.org/k8s.io/apimachinery/pkg/util/intstr#IntOrString
+					TargetPort: intstr.FromInt(int(cr.Spec.Port)),
 				},
 			},
 		},

@@ -8,3 +8,14 @@ spec:
     - port: 8081
   selector:
     control-plane: controller-manager
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: services-proxy
+  namespace: system
+spec:
+  ports:
+    - port: 8082
+  selector:
+    control-plane: controller-manager

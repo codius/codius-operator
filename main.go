@@ -47,9 +47,11 @@ func init() {
 func main() {
 	var metricsAddr string
 	var servicesApiAddr string
+	var proxyAddr string
 	var enableLeaderElection bool
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&servicesApiAddr, "services-api-addr", ":8081", "The address the services API endpoint binds to.")
+	flag.StringVar(&proxyAddr, "proxy-addr", ":8082", "The address the services proxy endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
@@ -88,6 +90,14 @@ func main() {
 		Log:         ctrl.Log.WithName("servers").WithName("Services API"),
 	}); err != nil {
 		setupLog.Error(err, "unable to create services API web server", "server", "Services API")
+		os.Exit(1)
+	}
+	if err = mgr.Add(&servers.Proxy{
+		BindAddress: proxyAddr,
+		Client:      mgr.GetClient(),
+		Log:         ctrl.Log.WithName("servers").WithName("Proxy"),
+	}); err != nil {
+		setupLog.Error(err, "unable to create services proxy web server", "server", "Proxy")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
