@@ -145,12 +145,25 @@ spec:
           status:
             description: ServiceStatus defines the observed state of Service
             properties:
+              availableReplicas:
+                description: Total number of available pods (ready for at least minReadySeconds)
+                  targeted by this service.
+                format: int32
+                type: integer
               lastRequestTime:
                 description: LastRequestTime is a timestamp representing the time
                   when this Service received its most recent request. Empty if not
                   yet scheduled. It is represented in RFC3339 form and is in UTC.
                 format: date-time
                 type: string
+              unavailableReplicas:
+                description: Total number of unavailable pods targeted by this service.
+                  This is the total number of pods that are still required for the
+                  service to have 100% available capacity. They may either be pods
+                  that are running but not yet available or pods that still have not
+                  been created.
+                format: int32
+                type: integer
             type: object
         type: object
     served: true

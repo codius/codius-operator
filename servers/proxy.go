@@ -61,20 +61,28 @@ func (proxy *Proxy) start() *http.Server {
 			rw.WriteHeader(http.StatusNotFound)
 			return
 		}
-		err := proxy.deductBalance(&serviceName)
-		if err != nil {
-			url402 := fmt.Sprintf("https://%s/%s/402", os.Getenv("CODIUS_HOSTNAME"), serviceName)
-			http.Redirect(rw, req, url402, http.StatusSeeOther)
+		var proxyUrl string
+		if codiusService.Status.UnavailableReplicas > int32(0) && codiusService.Status.AvailableReplicas == int32(0) {
+			proxyUrl = fmt.Sprintf("%s/%s/503", os.Getenv("CODIUS_WEB_URL"), serviceName)
 		} else {
-			codiusService.Status.LastRequestTime = &metav1.Time{Time: time.Now()}
-			if err := proxy.Status().Update(ctx, &codiusService); err != nil {
-				proxy.Log.Error(err, "unable to update LastRequestTime")
+			err := proxy.deductBalance(&serviceName)
+			if err != nil {
+				proxyUrl = fmt.Sprintf("%s/%s/402", os.Getenv("CODIUS_WEB_URL"), serviceName)
+			} else {
+				codiusService.Status.LastRequestTime = &metav1.Time{Time: time.Now()}
+				if err := proxy.Status().Update(ctx, &codiusService); err != nil {
+					proxy.Log.Error(err, "unable to update LastRequestTime")
+				}
+				if codiusService.Status.AvailableReplicas > int32(0) {
+					proxyUrl = fmt.Sprintf("http://%s.%s", codiusService.Labels["app"], os.Getenv("CODIUS_NAMESPACE"))
+				} else {
+					proxyUrl = fmt.Sprintf("%s/%s/503", os.Getenv("CODIUS_WEB_URL"), serviceName)
+				}
 			}
-			serviceUrl := fmt.Sprintf("http://%s.%s", codiusService.Labels["app"], os.Getenv("CODIUS_NAMESPACE"))
-			url, _ := url.Parse(serviceUrl)
-			proxy := httputil.NewSingleHostReverseProxy(url)
-			proxy.ServeHTTP(rw, req)
 		}
+		url, _ := url.Parse(proxyUrl)
+		proxy := httputil.NewSingleHostReverseProxy(url)
+		proxy.ServeHTTP(rw, req)
 	})
 	srv := &http.Server{
 		Addr: proxy.BindAddress,

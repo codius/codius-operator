@@ -123,6 +123,16 @@ type ServiceStatus struct {
 	// It is represented in RFC3339 form and is in UTC.
 	// +optional
 	LastRequestTime *metav1.Time `json:"lastRequestTime,omitempty"`
+
+	// Total number of available pods (ready for at least minReadySeconds) targeted by this service.
+	// +optional
+	AvailableReplicas int32 `json:"availableReplicas,omitempty"`
+
+	// Total number of unavailable pods targeted by this service. This is the total number of
+	// pods that are still required for the service to have 100% available capacity. They may
+	// either be pods that are running but not yet available or pods that still have not been created.
+	// +optional
+	UnavailableReplicas int32 `json:"unavailableReplicas,omitempty"`
 }
 
 // +kubebuilder:object:root=true

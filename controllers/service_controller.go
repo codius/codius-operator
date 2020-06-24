@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"time"
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -90,6 +91,13 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
+	codiusService.Status.AvailableReplicas = deployment.Status.AvailableReplicas
+	codiusService.Status.UnavailableReplicas = deployment.Status.UnavailableReplicas
+	if err := r.Status().Update(ctx, &codiusService); err != nil {
+		log.Error(err, "Failed to update Status")
+		return ctrl.Result{}, err
+	}
+
 	// Check if the Service already exists, if not create a new one
 	var service corev1.Service
 	err = r.Get(ctx, types.NamespacedName{Name: codiusService.Labels["app"], Namespace: os.Getenv("CODIUS_NAMESPACE")}, &service)
@@ -109,6 +117,31 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	} else if err != nil {
 		log.Error(err, "Failed to get Service.")
 		return ctrl.Result{}, err
+	}
+
+	if codiusService.Status.LastRequestTime == nil || codiusService.Status.LastRequestTime.Add(time.Minute).Before(time.Now()) {
+		if *deployment.Spec.Replicas >= int32(1) {
+			replicas := int32(0)
+			deployment.Spec.Replicas = &replicas
+			if err := r.Update(ctx, &deployment); err != nil {
+				log.Error(err, "Failed to scale down Deployment", "Deployment.Namespace", deployment.Namespace, "Deployment.Name", deployment.Name)
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, nil
+		}
+	} else {
+		if *deployment.Spec.Replicas == int32(0) {
+			replicas := int32(1)
+			deployment.Spec.Replicas = &replicas
+			if err := r.Update(ctx, &deployment); err != nil {
+				log.Error(err, "Failed to scale up Deployment", "Deployment.Namespace", deployment.Namespace, "Deployment.Name", deployment.Name)
+				return ctrl.Result{}, err
+			}
+		}
+		// Requeue a minute after the last request to try to scale down
+		return ctrl.Result{
+			RequeueAfter: time.Until(codiusService.Status.LastRequestTime.Add(time.Minute)),
+		}, nil
 	}
 
 	// Deployment and Service already exist - don't requeue
@@ -154,6 +187,7 @@ func deploymentForCR(cr *v1alpha1.Service) (*appsv1.Deployment, error) {
 		return nil, err
 	}
 	initCommand := fmt.Sprintf("while wget -T 1 --spider %s; do echo waiting for network policy enforcement; sleep 1; done", ips[0])
+	replicas := int32(0)
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.Name,
@@ -161,7 +195,7 @@ func deploymentForCR(cr *v1alpha1.Service) (*appsv1.Deployment, error) {
 			Labels:    labels,
 		},
 		Spec: appsv1.DeploymentSpec{
-			// Replicas: &replicas,   // Default to 1
+			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
 			},

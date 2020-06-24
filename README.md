@@ -26,6 +26,10 @@ Configure by patching the [controller manager deployment](config/manager/manager
 * Type: String
 * Description: URL for the internal [hello service](config/networkpolicy). Codius service deployment `initContainer`s will query the hello service to determine when the pod's [egress network policy](config/networkpolicy/networkpolicy.yaml) has been enforced.
 
+#### CODIUS_WEB_URL
+* Type: String
+* Description: URL of the [Codius web](https://github.com/codius/codius-web/) frontend.
+
 #### CODIUS_NAMESPACE
 * Type: String
 * Description: Namespace in which to create deployments, services, and ingresses. The operator controller manager must have the necessary [permissions](config/rbac/role.yaml) in this namespace. This is also the namespace to which the [network policy](config/networkpolicy/networkpolicy.yaml) should be applied.
