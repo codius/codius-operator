@@ -144,10 +144,19 @@ spec:
             type: object
           status:
             description: ServiceStatus defines the observed state of Service
+            properties:
+              lastRequestTime:
+                description: LastRequestTime is a timestamp representing the time
+                  when this Service received its most recent request. Empty if not
+                  yet scheduled. It is represented in RFC3339 form and is in UTC.
+                format: date-time
+                type: string
             type: object
         type: object
     served: true
     storage: true
+    subresources:
+      status: {}
 status:
   acceptedNames:
     kind: ""

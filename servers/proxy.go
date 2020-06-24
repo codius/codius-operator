@@ -11,10 +11,12 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/codius/codius-crd-operator/api/v1alpha1"
 	"github.com/go-logr/logr"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -64,6 +66,10 @@ func (proxy *Proxy) start() *http.Server {
 			url402 := fmt.Sprintf("https://%s/%s/402", os.Getenv("CODIUS_HOSTNAME"), serviceName)
 			http.Redirect(rw, req, url402, http.StatusSeeOther)
 		} else {
+			codiusService.Status.LastRequestTime = &metav1.Time{Time: time.Now()}
+			if err := proxy.Status().Update(ctx, &codiusService); err != nil {
+				proxy.Log.Error(err, "unable to update LastRequestTime")
+			}
 			serviceUrl := fmt.Sprintf("http://%s.%s", codiusService.Labels["app"], os.Getenv("CODIUS_NAMESPACE"))
 			url, _ := url.Parse(serviceUrl)
 			proxy := httputil.NewSingleHostReverseProxy(url)

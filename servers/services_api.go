@@ -29,6 +29,8 @@ func (api *ServicesApi) getService() httprouter.Handle {
 			return
 		}
 		rw.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		rw.Header().Set("Access-Control-Allow-Origin", "*")
+		rw.Header().Set("Access-Control-Allow-Methods", "GET")
 		rw.WriteHeader(http.StatusOK)
 		// Exclude secretData and internal fields
 		if err := json.NewEncoder(rw).Encode(&v1alpha1.Service{
@@ -44,7 +46,8 @@ func (api *ServicesApi) getService() httprouter.Handle {
 					"codius.org/hostname":  codiusService.ObjectMeta.Annotations["codius.org/hostname"],
 				},
 			},
-			Spec: codiusService.Spec,
+			Spec:   codiusService.Spec,
+			Status: codiusService.Status,
 		}); err != nil {
 			rw.WriteHeader(http.StatusInternalServerError)
 		}

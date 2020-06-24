@@ -117,10 +117,17 @@ type ServiceSpec struct {
 type ServiceStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	// LastRequestTime is a timestamp representing the time when this Service
+	// received its most recent request. Empty if not yet scheduled.
+	// It is represented in RFC3339 form and is in UTC.
+	// +optional
+	LastRequestTime *metav1.Time `json:"lastRequestTime,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Cluster
+// +kubebuilder:subresource:status
 
 // Service is the Schema for the services API
 type Service struct {
