@@ -165,12 +165,15 @@ func deploymentForCR(cr *v1alpha1.Service) (*appsv1.Deployment, error) {
 			}
 		}
 		containers[i] = corev1.Container{
-			Name:       container.Name,
-			Image:      container.Image,
-			Command:    container.Command,
-			Args:       container.Args,
-			WorkingDir: container.WorkingDir,
-			Env:        envVars,
+			Name:           container.Name,
+			Image:          container.Image,
+			Command:        container.Command,
+			Args:           container.Args,
+			WorkingDir:     container.WorkingDir,
+			Env:            envVars,
+			LivenessProbe:  container.LivenessProbe,
+			ReadinessProbe: container.ReadinessProbe,
+			StartupProbe:   container.StartupProbe,
 		}
 	}
 
