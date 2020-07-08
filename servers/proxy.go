@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/codius/codius-crd-operator/api/v1alpha1"
+	"github.com/codius/codius-operator/api/v1alpha1"
 	"github.com/go-logr/logr"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

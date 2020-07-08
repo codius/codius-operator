@@ -1,7 +1,7 @@
-# Codius CRD Operator
+# Codius Operator
 > [Kubebuilder](https://book.kubebuilder.io/)-based operator for Codius [custom resource definition](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/)
 
-![](https://github.com/codius/codius-crd-operator/workflows/Docker%20CI/badge.svg)
+![](https://github.com/codius/codius-operator/workflows/Docker%20CI/badge.svg)
 
 ### Dependencies
 

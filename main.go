@@ -26,9 +26,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	corev1alpha1 "github.com/codius/codius-crd-operator/api/v1alpha1"
-	"github.com/codius/codius-crd-operator/controllers"
-	"github.com/codius/codius-crd-operator/servers"
+	corev1alpha1 "github.com/codius/codius-operator/api/v1alpha1"
+	"github.com/codius/codius-operator/controllers"
+	"github.com/codius/codius-operator/servers"
 	// +kubebuilder:scaffold:imports
 )
 

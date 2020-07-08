@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/codius/codius-crd-operator/api/v1alpha1"
+	"github.com/codius/codius-operator/api/v1alpha1"
 	"github.com/go-logr/logr"
 	"github.com/julienschmidt/httprouter"
 

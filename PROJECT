@@ -1,5 +1,5 @@
 domain: codius.org
-repo: github.com/codius/codius-crd-operator
+repo: github.com/codius/codius-operator
 resources:
 - group: core
   kind: Service

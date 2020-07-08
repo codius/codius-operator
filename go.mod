@@ -1,4 +1,4 @@
-module github.com/codius/codius-crd-operator
+module github.com/codius/codius-operator
 
 go 1.13
 
