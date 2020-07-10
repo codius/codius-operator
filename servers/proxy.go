@@ -1,11 +1,23 @@
+/*
+
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package servers
 
 import (
-	"bytes"
-	"context"
-	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -27,22 +39,6 @@ type Proxy struct {
 	Log logr.Logger
 }
 
-func (proxy *Proxy) deductBalance(id *string) error {
-	url := fmt.Sprintf("%s/balances/%s:spend", os.Getenv("RECEIPT_VERIFIER_URL"), *id)
-	resp, err := http.Post(url, "text/plain", bytes.NewBuffer([]byte(os.Getenv("REQUEST_PRICE"))))
-	if err != nil {
-		proxy.Log.Error(err, "Failed to spend balance")
-		return err
-	}
-	b, _ := ioutil.ReadAll(resp.Body)
-	if resp.StatusCode != 200 {
-		err = errors.New(string(b))
-		proxy.Log.Error(err, "Failed to spend balance")
-		return err
-	}
-	return nil
-}
-
 func (proxy *Proxy) Start(stopCh <-chan struct{}) error {
 	svr := proxy.start()
 	defer proxy.stop(svr)
@@ -55,7 +51,7 @@ func (proxy *Proxy) start() *http.Server {
 	http.HandleFunc("/", func(rw http.ResponseWriter, req *http.Request) {
 		proxy.Log.Info(req.Host)
 		serviceName := strings.SplitN(req.Host, ".", 2)[0]
-		ctx := context.Background()
+		ctx := req.Context()
 		var codiusService v1alpha1.Service
 		if err := proxy.Get(ctx, types.NamespacedName{Name: serviceName, Namespace: ""}, &codiusService); err != nil {
 			rw.WriteHeader(http.StatusNotFound)
@@ -65,8 +61,8 @@ func (proxy *Proxy) start() *http.Server {
 		if codiusService.Status.UnavailableReplicas > int32(0) && codiusService.Status.AvailableReplicas == int32(0) {
 			proxyUrl = fmt.Sprintf("%s/%s/503", os.Getenv("CODIUS_WEB_URL"), serviceName)
 		} else {
-			err := proxy.deductBalance(&serviceName)
-			if err != nil {
+			if err := deductBalance(&serviceName, os.Getenv("REQUEST_PRICE")); err != nil {
+				proxy.Log.Error(err, "Failed to spend balance")
 				proxyUrl = fmt.Sprintf("%s/%s/402", os.Getenv("CODIUS_WEB_URL"), serviceName)
 			} else {
 				codiusService.Status.LastRequestTime = &metav1.Time{Time: time.Now()}

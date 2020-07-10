@@ -189,3 +189,22 @@ type ServiceList struct {
 func init() {
 	SchemeBuilder.Register(&Service{}, &ServiceList{})
 }
+
+func (in *Service) Sanitize() *Service {
+	// Exclude secretData and internal fields
+	return &Service{
+		TypeMeta: in.TypeMeta,
+		ObjectMeta: metav1.ObjectMeta{
+			Name: in.ObjectMeta.Name,
+			// Empty creationTimestamp currently isn't omitted
+			// https://github.com/kubernetes/kubernetes/issues/67610
+			CreationTimestamp: in.ObjectMeta.CreationTimestamp,
+			Annotations: map[string]string{
+				"codius.org/spec-hash": in.ObjectMeta.Annotations["codius.org/spec-hash"],
+				"codius.org/hostname":  in.ObjectMeta.Annotations["codius.org/hostname"],
+			},
+		},
+		Spec:   in.Spec,
+		Status: in.Status,
+	}
+}

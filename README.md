@@ -45,3 +45,7 @@ Configure by patching the [controller manager deployment](config/manager/manager
 #### RUNTIME_CLASS_NAME
 * Type: String
 * Description: [RuntimeClass](https://kubernetes.io/docs/concepts/containers/runtime-class/) to use for Codius service deployments' `runtimeClassName`
+
+#### SERVICE_PRICE
+* Type: Number
+* Description: The amount required to have been paid to create a service. Denominated in the host's asset (code and scale).
