@@ -8,6 +8,7 @@ import (
 	"github.com/codius/codius-operator/api/v1alpha1"
 	"github.com/go-logr/logr"
 	"github.com/julienschmidt/httprouter"
+	"github.com/rs/cors"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -67,7 +68,7 @@ func (api *ServicesApi) start() *http.Server {
 	router.GET("/services/:name", api.getService())
 	srv := &http.Server{
 		Addr:    api.BindAddress,
-		Handler: router,
+		Handler: cors.Default().Handler(router),
 	}
 	go func() {
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
