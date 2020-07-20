@@ -193,7 +193,6 @@ func init() {
 func (in *Service) Sanitize() *Service {
 	// Exclude secretData and internal fields
 	return &Service{
-		TypeMeta: in.TypeMeta,
 		ObjectMeta: metav1.ObjectMeta{
 			Name: in.ObjectMeta.Name,
 			// Empty creationTimestamp currently isn't omitted
