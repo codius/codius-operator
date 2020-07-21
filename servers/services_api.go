@@ -43,7 +43,7 @@ type Service struct {
 	SecretData map[string]string
 }
 
-func (api *ServicesApi) createService() httprouter.Handle {
+func (api *ServicesApi) createOrReplaceService() httprouter.Handle {
 	return func(rw http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 		authHeader := req.Header.Get("Authorization")
 		if authHeader == "" {
@@ -72,18 +72,30 @@ func (api *ServicesApi) createService() httprouter.Handle {
 		}
 		ctx := req.Context()
 		codiusService := v1alpha1.Service{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: v1alpha1.GroupVersion.String(),
+				Kind:       "Service",
+			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name: name,
+				Labels: map[string]string{
+					"codius.org/token": token,
+				},
 			},
 			Spec:       service.Spec,
 			SecretData: service.SecretData,
 		}
-		if err := api.Create(ctx, &codiusService); err != nil {
-			api.Log.Error(err, "Failed to create new Service.", "Service.Name", name)
+		// Create or replace
+		if err := api.Patch(ctx, &codiusService, client.Apply, client.ForceOwnership, client.FieldOwner("manager")); err != nil {
+			api.Log.Error(err, "Failed to patch Service.", "Service.Name", name)
 			rw.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		rw.WriteHeader(http.StatusCreated)
+		if codiusService.Generation == 1 {
+			rw.WriteHeader(http.StatusCreated)
+		} else {
+			rw.WriteHeader(http.StatusNoContent)
+		}
 	}
 }
 
@@ -117,7 +129,7 @@ func (api *ServicesApi) Start(stopCh <-chan struct{}) error {
 func (api *ServicesApi) start() *http.Server {
 	router := httprouter.New()
 	router.GET("/services/:name", api.getService())
-	router.PUT("/services/:name", api.createService())
+	router.PUT("/services/:name", api.createOrReplaceService())
 	srv := &http.Server{
 		Addr:    api.BindAddress,
 		Handler: cors.Default().Handler(router),

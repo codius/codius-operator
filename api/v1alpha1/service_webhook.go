@@ -87,7 +87,7 @@ func (r *Service) Default() {
 	// start with an alphabetic character, and end with an alphanumeric character
 	// (e.g. 'my-name',  or 'abc-123', regex used for validation is '[a-z]([-a-z0-9]*[a-z0-9])?'
 	// and must be no more than 63 characters.
-	r.Labels["app"] = "svc-" + (hash)[:59]
+	r.Labels["codius.org/service"] = "svc-" + (hash)[:59]
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
@@ -113,7 +113,18 @@ func (r *Service) ValidateCreate() error {
 func (r *Service) ValidateUpdate(old runtime.Object) error {
 	servicelog.Info("validate update", "name", r.Name)
 
-	// TODO(user): fill in your validation logic upon object update.
+	if r.Labels["codius.org/token"] != old.(*Service).Labels["codius.org/token"] {
+		return errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: r.Kind}, r.Name, field.ErrorList{
+			field.Invalid(field.NewPath("metadata").Child("labels").Child("codius.org/token"), r.Labels["codius.org/token"], "codius.org/token label must match existing resource"),
+		})
+	}
+	if err := r.ValidateHash(); err != nil {
+		return err
+	}
+	if err := r.ValidateSecretData(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -170,9 +181,9 @@ func (r *Service) ValidateHash() error {
 			field.Invalid(field.NewPath("metadata").Child("annotations").Child("codius.org/spec-hash"), r.Annotations["codius.org/spec-hash"], "codius.org/spec-hash annotation must be sha256 of spec"),
 		})
 	}
-	if r.Labels["app"] != "svc-"+(hash)[:59] {
+	if r.Labels["codius.org/service"] != "svc-"+(hash)[:59] {
 		return errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: r.Kind}, r.Name, field.ErrorList{
-			field.Invalid(field.NewPath("metadata").Child("labels").Child("app"), r.Labels["app"], "app label must have sha256 of spec"),
+			field.Invalid(field.NewPath("metadata").Child("labels").Child("codius.org/service"), r.Labels["codius.org/service"], "codius.org/service label must have sha256 of spec"),
 		})
 	}
 	return nil

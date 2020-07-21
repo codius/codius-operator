@@ -100,7 +100,7 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	// Check if the Service already exists, if not create a new one
 	var service corev1.Service
-	err = r.Get(ctx, types.NamespacedName{Name: codiusService.Labels["app"], Namespace: os.Getenv("CODIUS_NAMESPACE")}, &service)
+	err = r.Get(ctx, types.NamespacedName{Name: codiusService.Labels["codius.org/service"], Namespace: os.Getenv("CODIUS_NAMESPACE")}, &service)
 	if err != nil && errors.IsNotFound(err) {
 		ser := serviceForCR(&codiusService)
 		// Set Codius Service instance as the owner and controller
@@ -233,7 +233,7 @@ func serviceForCR(cr *v1alpha1.Service) *corev1.Service {
 			// a DNS-1035 label must consist of lower case alphanumeric characters or '-',
 			// start with an alphabetic character, and end with an alphanumeric character
 			// (e.g. 'my-name',  or 'abc-123', regex used for validation is '[a-z]([-a-z0-9]*[a-z0-9])?'
-			Name:      cr.Labels["app"],
+			Name:      cr.Labels["codius.org/service"],
 			Namespace: os.Getenv("CODIUS_NAMESPACE"),
 			Labels:    labels,
 		},
@@ -254,7 +254,7 @@ func serviceForCR(cr *v1alpha1.Service) *corev1.Service {
 // labelsForCR returns the labels for selecting the resources
 // belonging to the given Codius Service name.
 func labelsForCR(cr *v1alpha1.Service) map[string]string {
-	return map[string]string{"app": cr.Labels["app"]}
+	return map[string]string{"codius.org/service": cr.Labels["codius.org/service"]}
 }
 
 func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {

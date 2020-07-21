@@ -70,7 +70,7 @@ func (proxy *Proxy) start() *http.Server {
 					proxy.Log.Error(err, "unable to update LastRequestTime")
 				}
 				if codiusService.Status.AvailableReplicas > int32(0) {
-					proxyUrl = fmt.Sprintf("http://%s.%s", codiusService.Labels["app"], os.Getenv("CODIUS_NAMESPACE"))
+					proxyUrl = fmt.Sprintf("http://%s.%s", codiusService.Labels["codius.org/service"], os.Getenv("CODIUS_NAMESPACE"))
 				} else {
 					proxyUrl = fmt.Sprintf("%s/%s/503", os.Getenv("CODIUS_WEB_URL"), serviceName)
 				}
