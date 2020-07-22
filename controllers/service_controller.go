@@ -91,13 +91,6 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
-	codiusService.Status.AvailableReplicas = deployment.Status.AvailableReplicas
-	codiusService.Status.UnavailableReplicas = deployment.Status.UnavailableReplicas
-	if err := r.Status().Update(ctx, &codiusService); err != nil {
-		log.Error(err, "Failed to update Status")
-		return ctrl.Result{}, err
-	}
-
 	// Check if the Service already exists, if not create a new one
 	var service corev1.Service
 	err = r.Get(ctx, types.NamespacedName{Name: codiusService.Labels["codius.org/service"], Namespace: os.Getenv("CODIUS_NAMESPACE")}, &service)
@@ -116,6 +109,21 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	} else if err != nil {
 		log.Error(err, "Failed to get Service.")
+		return ctrl.Result{}, err
+	}
+
+	codiusService.Status.AvailableReplicas = deployment.Status.AvailableReplicas
+	codiusService.Status.UnavailableReplicas = deployment.Status.UnavailableReplicas
+	if service.Annotations["codius.org/last-request-time"] != "" {
+		reqTime, err := time.Parse(time.RFC3339, service.Annotations["codius.org/last-request-time"])
+		if err != nil {
+			log.Error(err, "Failed to parse service last request time", "last-request-time", service.Annotations["codius.org/last-request-time"])
+		} else {
+			codiusService.Status.LastRequestTime = &metav1.Time{Time: reqTime}
+		}
+	}
+	if err := r.Status().Update(ctx, &codiusService); err != nil {
+		log.Error(err, "Failed to update Status")
 		return ctrl.Result{}, err
 	}
 

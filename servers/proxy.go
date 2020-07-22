@@ -17,6 +17,7 @@ limitations under the License.
 package servers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
@@ -28,6 +29,7 @@ import (
 	"github.com/codius/codius-operator/api/v1alpha1"
 	"github.com/go-logr/logr"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -65,9 +67,25 @@ func (proxy *Proxy) start() *http.Server {
 				proxy.Log.Error(err, "Failed to spend balance")
 				proxyUrl = fmt.Sprintf("%s/%s/402", os.Getenv("CODIUS_WEB_URL"), serviceName)
 			} else {
-				codiusService.Status.LastRequestTime = &metav1.Time{Time: time.Now()}
-				if err := proxy.Status().Update(ctx, &codiusService); err != nil {
-					proxy.Log.Error(err, "unable to update LastRequestTime")
+				service := &corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      codiusService.Labels["codius.org/service"],
+						Namespace: os.Getenv("CODIUS_NAMESPACE"),
+					},
+					Spec: corev1.ServiceSpec{},
+				}
+				mergePatch, err := json.Marshal(map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"annotations": map[string]interface{}{
+							"codius.org/last-request-time": time.Now().Format(time.RFC3339),
+						},
+					},
+				})
+				if err != nil {
+					proxy.Log.Error(err, "Failed to marshal last request time patch")
+				}
+				if err := proxy.Patch(ctx, service, client.RawPatch(types.MergePatchType, mergePatch)); err != nil {
+					proxy.Log.Error(err, "unable to update last request time")
 				}
 				if codiusService.Status.AvailableReplicas > int32(0) {
 					proxyUrl = fmt.Sprintf("http://%s.%s", codiusService.Labels["codius.org/service"], os.Getenv("CODIUS_NAMESPACE"))
