@@ -18,9 +18,12 @@ package v1alpha1
 
 import (
 	"crypto/sha256"
+	"encoding/base32"
 	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -36,6 +39,8 @@ var c client.Client
 
 // log is for logging in this package.
 var servicelog = logf.Log.WithName("service-resource")
+
+var validHash = regexp.MustCompile(`^[a-z2-8]{52}$`)
 
 func (r *Service) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	c = mgr.GetClient()
@@ -77,7 +82,7 @@ func (r *Service) Default() {
 	if r.Annotations == nil {
 		r.Annotations = map[string]string{}
 	}
-	r.Annotations["codius.org/spec-hash"] = hash
+	r.Annotations["codius.org/hash"] = hash
 	r.Annotations["codius.org/hostname"] = fmt.Sprintf("%s.%s", r.Name, os.Getenv("CODIUS_HOSTNAME"))
 
 	if r.Labels == nil {
@@ -87,7 +92,7 @@ func (r *Service) Default() {
 	// start with an alphabetic character, and end with an alphanumeric character
 	// (e.g. 'my-name',  or 'abc-123', regex used for validation is '[a-z]([-a-z0-9]*[a-z0-9])?'
 	// and must be no more than 63 characters.
-	r.Labels["codius.org/service"] = "svc-" + (hash)[:59]
+	r.Labels["codius.org/service"] = "svc-" + hash
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
@@ -99,14 +104,7 @@ var _ webhook.Validator = &Service{}
 func (r *Service) ValidateCreate() error {
 	servicelog.Info("validate create", "name", r.Name)
 
-	if err := r.ValidateHash(); err != nil {
-		return err
-	}
-	if err := r.ValidateSecretData(); err != nil {
-		return err
-	}
-
-	return nil
+	return r.ValidateService()
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
@@ -118,14 +116,8 @@ func (r *Service) ValidateUpdate(old runtime.Object) error {
 			field.Invalid(field.NewPath("metadata").Child("labels").Child("codius.org/token"), r.Labels["codius.org/token"], "codius.org/token label must match existing resource"),
 		})
 	}
-	if err := r.ValidateHash(); err != nil {
-		return err
-	}
-	if err := r.ValidateSecretData(); err != nil {
-		return err
-	}
 
-	return nil
+	return r.ValidateService()
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
@@ -133,6 +125,19 @@ func (r *Service) ValidateDelete() error {
 	servicelog.Info("validate delete", "name", r.Name)
 
 	// TODO(user): fill in your validation logic upon object deletion.
+	return nil
+}
+
+func (r *Service) ValidateService() error {
+	if err := r.ValidateHash(); err != nil {
+		return err
+	}
+	if err := r.ValidateName(); err != nil {
+		return err
+	}
+	if err := r.ValidateSecretData(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -176,14 +181,29 @@ func (r *Service) ValidateHash() error {
 	if err != nil {
 		return err
 	}
-	if r.Annotations["codius.org/spec-hash"] != hash {
+	if r.Annotations["codius.org/hash"] != hash {
 		return errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: r.Kind}, r.Name, field.ErrorList{
-			field.Invalid(field.NewPath("metadata").Child("annotations").Child("codius.org/spec-hash"), r.Annotations["codius.org/spec-hash"], "codius.org/spec-hash annotation must be sha256 of spec"),
+			field.Invalid(field.NewPath("metadata").Child("annotations").Child("codius.org/hash"), r.Annotations["codius.org/hash"], "codius.org/hash annotation must be sha256 of spec"),
 		})
 	}
-	if r.Labels["codius.org/service"] != "svc-"+(hash)[:59] {
+	if r.Labels["codius.org/service"] != "svc-"+hash {
 		return errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: r.Kind}, r.Name, field.ErrorList{
 			field.Invalid(field.NewPath("metadata").Child("labels").Child("codius.org/service"), r.Labels["codius.org/service"], "codius.org/service label must have sha256 of spec"),
+		})
+	}
+	return nil
+}
+
+func (r *Service) ValidateName() error {
+	if r.Labels["codius.org/immutable"] == "true" {
+		if r.Annotations["codius.org/hash"] != r.Name {
+			return errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: r.Kind}, r.Name, field.ErrorList{
+				field.Invalid(field.NewPath("metadata").Child("name"), r.Name, "name must be sha256 of spec"),
+			})
+		}
+	} else if validHash.MatchString(r.Name) {
+		return errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: r.Kind}, r.Name, field.ErrorList{
+			field.Invalid(field.NewPath("metadata").Child("name"), r.Name, "name must NOT be a sha256 hash"),
 		})
 	}
 	return nil
@@ -194,7 +214,8 @@ func (r *Service) hashSpec() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%x", sha256.Sum256([]byte(data))), nil
+	hash := sha256.Sum256([]byte(data))
+	return strings.ToLower(base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(hash[:])), nil
 }
 
 func (r *Service) hashSecret() (string, error) {
@@ -202,5 +223,6 @@ func (r *Service) hashSecret() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%x", sha256.Sum256([]byte(data))), nil
+	hash := sha256.Sum256([]byte(data))
+	return strings.ToLower(base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(hash[:])), nil
 }

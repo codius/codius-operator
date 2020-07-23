@@ -64,6 +64,31 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	if codiusService.Labels["codius.org/immutable"] != "true" {
+		// Check if the corresponding immutable service exists, if not create a new one
+		var immutableService v1alpha1.Service
+		err := r.Get(ctx, types.NamespacedName{Name: codiusService.Annotations["codius.org/hash"]}, &immutableService)
+		if err != nil && errors.IsNotFound(err) {
+			immutableService := codiusService.Immutify()
+			// Do NOT set Codius Service as the owner and controller
+			log.Info("Creating a new immutable Service", "Service.Name", immutableService.Name)
+			err = r.Client.Create(ctx, immutableService)
+			if err != nil {
+				log.Error(err, "Failed to create new immutable Service", "Service.Name", immutableService.Name)
+				return ctrl.Result{}, err
+			}
+
+			// Immutable Service created successfully - don't requeue
+			return ctrl.Result{}, nil
+		} else if err != nil {
+			log.Error(err, "Failed to get immutable Service")
+			return ctrl.Result{}, err
+		}
+		// Immutable Service already exists - don't requeue
+		log.Info("Skip reconcile: Immutable Service already exists", "Service.Name", immutableService.Name)
+		return ctrl.Result{}, nil
+	}
+
 	// Check if the deployment already exists, if not create a new one
 	var deployment appsv1.Deployment
 	err := r.Get(ctx, types.NamespacedName{Name: codiusService.Name, Namespace: os.Getenv("CODIUS_NAMESPACE")}, &deployment)
@@ -125,6 +150,22 @@ func (r *ServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	if err := r.Status().Update(ctx, &codiusService); err != nil {
 		log.Error(err, "Failed to update Status")
 		return ctrl.Result{}, err
+	}
+	// update corresponding mutable services' status
+	var mutableServices v1alpha1.ServiceList
+	if err := r.List(ctx, &mutableServices, client.MatchingLabels{
+		"codius.org/service":   codiusService.Labels["codius.org/service"],
+		"codius.org/immutable": "false",
+	}); err != nil {
+		log.Error(err, "unable to list mutable Services")
+		return ctrl.Result{}, err
+	}
+	for _, svc := range mutableServices.Items {
+		svc.Status = codiusService.Status
+		if err := r.Status().Update(ctx, &svc); err != nil {
+			log.Error(err, "Failed to update mutable Service Status", "Service.Name", svc.Name)
+			return ctrl.Result{}, err
+		}
 	}
 
 	if codiusService.Status.LastRequestTime == nil || codiusService.Status.LastRequestTime.Add(time.Minute).Before(time.Now()) {

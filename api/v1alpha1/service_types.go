@@ -194,16 +194,32 @@ func (in *Service) Sanitize() *Service {
 	// Exclude secretData and internal fields
 	return &Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: in.ObjectMeta.Name,
+			Name: in.Name,
 			// Empty creationTimestamp currently isn't omitted
 			// https://github.com/kubernetes/kubernetes/issues/67610
-			CreationTimestamp: in.ObjectMeta.CreationTimestamp,
+			CreationTimestamp: in.CreationTimestamp,
 			Annotations: map[string]string{
-				"codius.org/spec-hash": in.ObjectMeta.Annotations["codius.org/spec-hash"],
-				"codius.org/hostname":  in.ObjectMeta.Annotations["codius.org/hostname"],
+				"codius.org/hash":     in.Annotations["codius.org/hash"],
+				"codius.org/hostname": in.Annotations["codius.org/hostname"],
+			},
+			Labels: map[string]string{
+				"codius.org/immutable": in.Labels["codius.org/immutable"],
 			},
 		},
 		Spec:   in.Spec,
 		Status: in.Status,
+	}
+}
+
+func (in *Service) Immutify() *Service {
+	return &Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: in.Annotations["codius.org/hash"],
+			Labels: map[string]string{
+				"codius.org/immutable": "true",
+			},
+		},
+		Spec:       in.Spec,
+		SecretData: in.SecretData,
 	}
 }

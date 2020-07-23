@@ -79,7 +79,8 @@ func (api *ServicesApi) createOrReplaceService() httprouter.Handle {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: name,
 				Labels: map[string]string{
-					"codius.org/token": token,
+					"codius.org/immutable": "false",
+					"codius.org/token":     token,
 				},
 			},
 			Spec:       service.Spec,
