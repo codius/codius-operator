@@ -131,9 +131,14 @@ func (api *ServicesApi) start() *http.Server {
 	router := httprouter.New()
 	router.GET("/services/:name", api.getService())
 	router.PUT("/services/:name", api.createOrReplaceService())
+	c := cors.New(cors.Options{
+		AllowedHeaders:   []string{"Authorization", "Content-Type"},
+		AllowedMethods:   []string{"GET", "PUT"},
+		AllowCredentials: true,
+	})
 	srv := &http.Server{
 		Addr:    api.BindAddress,
-		Handler: cors.Default().Handler(router),
+		Handler: c.Handler(router),
 	}
 	go func() {
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
