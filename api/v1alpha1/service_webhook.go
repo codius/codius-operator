@@ -112,9 +112,8 @@ func (r *Service) ValidateUpdate(old runtime.Object) error {
 	servicelog.Info("validate update", "name", r.Name)
 
 	if r.Labels["codius.org/token"] != old.(*Service).Labels["codius.org/token"] {
-		return errors.NewInvalid(schema.GroupKind{Group: "core.codius.org", Kind: r.Kind}, r.Name, field.ErrorList{
-			field.Invalid(field.NewPath("metadata").Child("labels").Child("codius.org/token"), r.Labels["codius.org/token"], "codius.org/token label must match existing resource"),
-		})
+		return errors.NewForbidden(schema.GroupResource{Group: "core.codius.org", Resource: r.Kind}, r.Name,
+			field.Invalid(field.NewPath("metadata").Child("labels").Child("codius.org/token"), r.Labels["codius.org/token"], "codius.org/token label must match existing resource"))
 	}
 
 	return r.ValidateService()

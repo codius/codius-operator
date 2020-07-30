@@ -89,7 +89,13 @@ func (api *ServicesApi) createOrReplaceService() httprouter.Handle {
 		// Create or replace
 		if err := api.Patch(ctx, &codiusService, client.Apply, client.ForceOwnership, client.FieldOwner("manager")); err != nil {
 			api.Log.Error(err, "Failed to patch Service.", "Service.Name", name)
-			rw.WriteHeader(http.StatusInternalServerError)
+			if strings.Contains(err.Error(), "is forbidden") {
+				rw.WriteHeader(http.StatusForbidden)
+			} else if strings.Contains(err.Error(), "is invalid") {
+				rw.WriteHeader(http.StatusBadRequest)
+			} else {
+				rw.WriteHeader(http.StatusInternalServerError)
+			}
 			return
 		}
 		if codiusService.Generation == 1 {
