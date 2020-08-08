@@ -49,3 +49,22 @@ Configure by patching the [controller manager deployment](config/manager/manager
 #### SERVICE_PRICE
 * Type: Number
 * Description: The amount required to have been paid to create a service. Denominated in the host's asset (code and scale).
+
+### API Documentation
+
+#### `PUT /services/{ID}`
+
+Create a [Codius service](https://godoc.org/github.com/codius/codius-operator/api/v1alpha1#Service)
+
+##### Request Body:
+
+* Type: [Object](https://godoc.org/github.com/codius/codius-operator/servers#Service)
+
+| Field Name | Type     | Description              |
+|------------|----------|--------------------------|
+| [spec](https://godoc.org/github.com/codius/codius-operator/api/v1alpha1#ServiceSpec) | Object | An object containing details for your service.|
+| [secretData](https://godoc.org/github.com/codius/codius-operator/api/v1alpha1#Service) | Object | An object containing private variables you want to pass to the host, such as an AWS key.|
+
+#### `GET /services/{ID}`
+
+Retrieve the specified [Codius service](https://godoc.org/github.com/codius/codius-operator/api/v1alpha1#Service)
